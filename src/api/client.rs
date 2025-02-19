@@ -185,6 +185,7 @@ impl TweetyClient {
                     });
                 }
                 let status = response.status();
+                let headers = response.headers().clone();
 
                 let status_text = response
                     .json::<Value>()
@@ -192,8 +193,8 @@ impl TweetyClient {
                     .map_err(|err| TweetyError::JsonParseError(err.to_string()))?;
 
                 Err(TweetyError::ApiError(format!(
-                    "HTTP {}: {}",
-                    status, status_text
+                    "HTTP {}: {}:{:?}",
+                    status, status_text, headers
                 )))
             }
             Err(err) => Err(TweetyError::NetworkError(err.to_string())),
