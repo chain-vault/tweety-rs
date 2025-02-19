@@ -1,7 +1,7 @@
 use crate::api::client::TweetyClient;
 use crate::api::error::TweetyError;
 use crate::types::tweet::PostTweetParams;
-use reqwest::Method;
+use reqwest::{header::HeaderMap, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
@@ -45,6 +45,12 @@ impl fmt::Display for Ids {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PostTweetResponseData {
     pub data: TweetResponse,
+}
+
+#[derive(Debug)]
+pub struct PostTweetResponseDataWithHeader {
+    pub data: PostTweetResponseData,
+    pub headers: HeaderMap,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -102,8 +108,38 @@ impl TweetyClient {
             Err(err) => Err(TweetyError::ApiError(err.to_string())),
         }
     }
+
+    pub async fn post_tweet_with_headers(
+        &self,
+        message: &str,
+        body_params: Option<PostTweetParams>,
+    ) -> Result<PostTweetResponseDataWithHeader, TweetyError> {
+        let base_url = "https://api.twitter.com/2/tweets";
+
+        let json_body = if let Some(body) = body_params {
+            body.to_json(message)
+        } else {
+            let json_data = serde_json::json!({ "text": message });
+            json_data
+        };
+
+        match self
+            .send_request_with_headers(base_url, Method::POST, Some(json_body))
+            .await
+        {
+            Ok(response) => match serde_json::from_value::<PostTweetResponseData>(response.body) {
+                Ok(res) => Ok(PostTweetResponseDataWithHeader {
+                    data: res,
+                    headers: response.headers,
+                }),
+                Err(e) => Err(TweetyError::JsonParseError(e.to_string())),
+            },
+            Err(err) => Err(TweetyError::ApiError(err.to_string())),
+        }
+    }
+
     /// UPDATE/EDIT TWEET
-    pub async fn edit_tweet(self, message: &str, media_id: &str) -> Result<Value, TweetyError> { 
+    pub async fn edit_tweet(self, message: &str, media_id: &str) -> Result<Value, TweetyError> {
         let base_url = format!("https://api.twitter.com/2/tweets/{}", media_id);
 
         let body = serde_json::json!({
