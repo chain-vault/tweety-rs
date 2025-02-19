@@ -193,7 +193,7 @@ impl TweetyClient {
                     .map_err(|err| TweetyError::JsonParseError(err.to_string()))?;
 
                 Err(TweetyError::ApiError(format!(
-                    "HTTP {}: {}:{:?}",
+                    "HTTP {}: {}: Headers:{:?}",
                     status, status_text, headers
                 )))
             }
